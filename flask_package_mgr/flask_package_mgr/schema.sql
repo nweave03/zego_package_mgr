@@ -7,14 +7,15 @@ create table users (
     id          integer primary key autoincrement,
     username    varchar(255),
     password    varchar(255),
-    apikey      varchar(255)
+    apikey      varchar(255),
+    CONSTRAINT unique_username UNIQUE(username)
     );
 
 create table packages (
     id          integer primary key autoincrement,
     title       varchar(255),
     user_id     integer,
-        FOREIGN KEY(user_id) REFERENCES users(id)
+    FOREIGN KEY(user_id) REFERENCES users(id)
     );
 
 create table filestore (

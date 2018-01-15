@@ -7,6 +7,7 @@
 from __future__ import unicode_literals, absolute_import
 
 from flask import Blueprint, request, session, g, abort, current_app, jsonify
+from .schemas import TokenSchema
 
 from .. import package_database
 from ..error_handlers import IntegrityError, UnhandledError, UnauthorizedError, InvalidUseError
@@ -25,6 +26,15 @@ def authenticate_request(request):
         raise UnauthorizedError(message='Token not provided')
     return authenticate(request.headers['token'])
 
+def parse_message(content, schema):
+    parsed_data, errors = schema.load(content)
+
+    if errors:
+        for key in errors:
+            raise InvalidUseError(message=errors[key][0])
+
+    return parsed_data
+
 @pckg.route('/admin/user_list', methods=['GET'])
 def user_list():
     user_list = package_database.list_users()
@@ -35,9 +45,11 @@ def user_list():
 @pckg.route('/user/add', methods=['POST'])
 def user_add():
     content = request.get_json()
+    
+    parsed_data = parse_message(content, TokenSchema())
     r = auth_add_user(
-                username=content['username'],
-                password=content['password']
+                username=parsed_data['username'],
+                password=parsed_data['password']
                 )
     return jsonify(r)
 
@@ -45,44 +57,62 @@ def user_add():
 def get_token():
     validate_request(request)
     content = request.get_json()
-    if 'username' not in content:
-        raise InvalidUseError(message='get_token requires username')
-    if 'password' not in content:
-        raise InvalidUseError(message='get_token requires password')
-    
+
+    parsed_data = parse_message(content, TokenSchema())
+
     return jsonify(authorize(
-                    username=content['username'],
-                    provided_password=content['password']
+                    username=parsed_data['username'],
+                    provided_password=parsed_data['password']
                     ))
 
 @pckg.route('/user/invalidate_token', methods=['POST'])
 def invalidate_token():
     authenticate_request(request)
     content = request.get_json()
-    if 'username' not in content:
-        raise InvalidUseError(message='get_token requires username')
-    if 'password' not in content:
-        raise InvalidUseError(message='get_token requires password')
+    
+    parsed_data = parse_message(content, TokenSchema())
+
     return jsonify(unauthorize(
-                    username=content['username'],
-                    provided_password=content['password']
+                    username=parsed_data['username'],
+                    provided_password=parsed_data['password']
                     ))
 
-@pckg.route('/list_packages', methods=['GET'])
-def list_entry():
-    print "List Pacakges Called"
-    return "List Packages Called"
+@pckg.route('/packages', methods=['GET', 'POST'])
+def packages():
+    authenticate_request(request)
+    content = request.get_json()
+    if request.method == 'POST':
+        pass
+    elif request.method == 'GET':
+        parsed_data = parse_message(content, PackagesGetSchema())
+        packages = []
+        if parsed_data['search']:
+            packages = search_packages(
+                    search=parsed_data['search']
+                    )
+        else:
+            packages = search_all_packages()
+        return jsonify(packages)
+    else:
+        raise InvalidUseError(message='method not supported')
 
-@pckg.route('/upload_package', methods=['POST'])
+@pckg.route('/packages/<package_title>', methods=['GET','POST'])
 def upload_package():
-    print "Upload Package Called"
-    return "Upload Package Called"
+    authenticate_request(request)
+    content = request.get_json()
+    if request.method == 'POST':
+        pass
+    elif request.method == 'GET':
+        pass
+    else:
+        raise InvalidUseError(message='method not supported')
+
 
 @pckg.errorhandler(UnauthorizedError)
 @pckg.errorhandler(UnhandledError)
 @pckg.errorhandler(IntegrityError)
 @pckg.errorhandler(InvalidUseError)
-def handle_integrity_error(error):
+def handle_custom_error(error):
     response = jsonify(error.to_dict())
     response.status_code = error.status_code
     return response

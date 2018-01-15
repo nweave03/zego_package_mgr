@@ -101,3 +101,41 @@ def lookup_password(user):
                     e=err
                     )
         raise UnhandledError()
+
+
+
+def search_all_packages():
+    try:
+        all_packages_query = "SELECT title FROM packages"
+        packages = query_db(
+                query=all_packages_query
+                )
+        if None == Packages:
+            packages = []
+        return packages
+    except Exception as err:
+        print "Unhandled Error in search_packages : {e}".format(
+                    e=err
+                    )
+        raise UnhandledError()
+
+
+
+def search_packages(search_term):
+    try:
+        search_query = "SELECT title FROM packages WHERE title LIKE ?"
+        search_term = "%{st}%".fomat(st=search_term)
+        packages = query_db(
+                query=search_query,
+                args=[ search_term ]
+                )
+        if None == Packages:
+            packages = []
+        return packages
+    except Exception as err:
+        print "Unhandled Error in search_packages {st} : {e}".format(
+                    st=search_term,
+                    e=err
+                    )
+        raise UnhandledError()
+

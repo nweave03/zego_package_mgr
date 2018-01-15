@@ -180,7 +180,7 @@ def test_get_token(client):
     assert b'token' in response_dict
     assert b'aValidToken' in response_dict['token']
 
-def test_get_token_fail(client):
+def test_get_token_fail_bad_pass(client):
     add_base_user(client)
 
     get_token_data = {
@@ -196,6 +196,39 @@ def test_get_token_fail(client):
             )
     assert response_codes.UNAUTHORIZED == r.status_code
     assert b'password is incorrect' in r.data
+
+def test_get_token_fail_no_pass(client):
+    add_base_user(client)
+
+    get_token_data = {
+        'username' : 'nweaver'
+        }
+
+    r = client.post(
+            '/user/get_token',
+            data=json.dumps(get_token_data),
+            content_type='application/json',
+            follow_redirects=True
+            )
+    assert response_codes.INVALID_USE == r.status_code
+    assert b'password is required' in r.data
+
+def test_get_token_fail_no_user(client):
+    add_base_user(client)
+
+    get_token_data = {
+        'password' : 'password'
+        }
+
+    r = client.post(
+            '/user/get_token',
+            data=json.dumps(get_token_data),
+            content_type='application/json',
+            follow_redirects=True
+            )
+    assert response_codes.INVALID_USE == r.status_code
+    assert b'username is required' in r.data
+
 
 def test_invalidate_token(client):
     token = add_base_user_and_get_token(client)

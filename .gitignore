@@ -1,3 +1,5 @@
+.cache/
+flask_package_mgr/.cache/
 flask_package_mgr/venv/
 flask_package_mgr/flask_package_mgr.egg-info/
 flask_package_mgr/.eggs/

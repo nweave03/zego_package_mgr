@@ -14,8 +14,6 @@ def query_db(query, args=(), one=False):
     rv = cur.fetchall()
     cur.close()
     
-    print "result {rv}".format(rv=rv)
-
     if not rv:
         return None
 
@@ -45,7 +43,9 @@ def table_list(table):
     """
     Used to generate a table list
     """
-    return query_db('SELECT * FROM {t}'.format(t=table))
+    return query_db(
+            query='SELECT * FROM {t}'.format(t=table)
+            )
 
 def add_user(username, password, key):
     """
@@ -58,9 +58,9 @@ def add_user(username, password, key):
         )
     try:
         add_query = insert_db(
-                        'users',
-                        ['username', 'password', 'apikey'],
-                        [username, password, key]
+                        table='users',
+                        fields=['username', 'password', 'apikey'],
+                        values=[username, password, key]
                         )
     except sqlite3.IntegrityError as err:
         raise IntegrityError(message='username is already in use')
@@ -80,3 +80,24 @@ def list_users():
     """
     return table_list('users')
 
+def lookup_password(user):
+    """
+    Lookup a users password.  This is not a good way of doing this.  The 
+    database is not salted or hashed.  But this is a quick way of doing this.
+    """
+
+    try:
+        password_query = "SELECT password FROM users WHERE username = ?";
+        password = query_db(
+                query=password_query,
+                args=[ user ]
+                )
+        if None == password:
+            raise InvalidUseError(message='username not found')
+        return password[0]['password']
+    except Exception as err:
+        print "Unhandled Error lookup up user {u} : {e}".format(
+                    u=user,
+                    e=err
+                    )
+        raise UnhandledError()

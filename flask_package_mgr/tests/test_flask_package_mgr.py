@@ -20,6 +20,40 @@ def client(request):
 
     return client
 
+def add_base_user(client):
+    adduser = {
+        'username' : 'nweaver',
+        'password' : 'password'
+        }
+        
+    r = client.post(
+            '/user/add',
+            data=json.dumps(adduser),
+            content_type='application/json',
+            follow_redirects=True
+            )
+    assert r.status_code == 200
+  
+def add_base_user_and_get_token(client):
+    add_base_user(client)
+    get_token_data = {
+        'username' : 'nweaver',
+        'password' : 'password'
+        }
+
+    r = client.post(
+            '/user/get_token',
+            data=json.dumps(get_token_data),
+            content_type='application/json',
+            follow_redirects=True
+            )
+    assert 200 == r.status_code
+    response_dict = json.loads(r.data)
+
+    assert b'token' in response_dict
+    return response_dict['token']
+
+
 def test_list_users(client):
     """ initialized with 0 users """
     r = client.get('/admin/user_list')
@@ -125,3 +159,116 @@ def test_duplicate_user_add(client):
             found_nweaver = True
 
     assert True == found_nweaver
+
+def test_get_token(client):
+    add_base_user(client)
+
+    get_token_data = {
+        'username' : 'nweaver',
+        'password' : 'password'
+        }
+
+    r = client.post(
+            '/user/get_token',
+            data=json.dumps(get_token_data),
+            content_type='application/json',
+            follow_redirects=True
+            )
+    assert 200 == r.status_code
+    response_dict = json.loads(r.data)
+
+    assert b'token' in response_dict
+    assert b'aValidToken' in response_dict['token']
+
+def test_get_token_fail(client):
+    add_base_user(client)
+
+    get_token_data = {
+        'username' : 'nweaver',
+        'password' : 'password1'
+        }
+
+    r = client.post(
+            '/user/get_token',
+            data=json.dumps(get_token_data),
+            content_type='application/json',
+            follow_redirects=True
+            )
+    assert response_codes.UNAUTHORIZED == r.status_code
+    assert b'password is incorrect' in r.data
+
+def test_invalidate_token(client):
+    token = add_base_user_and_get_token(client)
+
+    token_data = { 'token' : token }
+    invalidate_token_data = { 
+        'username' : 'nweaver',
+        'password' : 'password'
+        }
+    r = client.post(
+            '/user/invalidate_token',
+            data=json.dumps(invalidate_token_data),
+            headers=token_data,
+            content_type='application/json',
+            follow_redirects=True
+            )
+    
+    assert 200 == r.status_code
+    assert b'token has been revoked' in r.data
+
+def test_invalidate_token_fail_invalid_token(client):
+    token = add_base_user_and_get_token(client)
+
+    token_data = { 'token' : 'anInvalidToken' }
+    invalidate_token_data = { 
+        'username' : 'nweaver',
+        'password' : 'password'
+        }
+    r = client.post(
+            '/user/invalidate_token',
+            data=json.dumps(invalidate_token_data),
+            headers=token_data,
+            content_type='application/json',
+            follow_redirects=True
+            )
+    
+    assert response_codes.UNAUTHORIZED == r.status_code
+    assert b'Invalid Token' in r.data
+
+def test_invalidate_token_fail_no_token(client):
+    token = add_base_user_and_get_token(client)
+
+    invalidate_token_data = { 
+        'username' : 'nweaver',
+        'password' : 'password'
+        }
+
+    r = client.post(
+            '/user/invalidate_token',
+            data=json.dumps(invalidate_token_data),
+            content_type='application/json',
+            follow_redirects=True
+            )
+    
+    assert response_codes.UNAUTHORIZED == r.status_code
+    assert b'Token not provided' in r.data
+
+
+def test_invalidate_token_fail_bad_password(client):
+    token = add_base_user_and_get_token(client)
+    token_data = { 'token' : token }
+    invalidate_token_data = { 
+        'username' : 'nweaver',
+        'password' : 'password1'
+        }
+    r = client.post(
+            '/user/invalidate_token',
+            data=json.dumps(invalidate_token_data),
+            headers=token_data,
+            content_type='application/json',
+            follow_redirects=True
+            )
+    
+    assert response_codes.UNAUTHORIZED == r.status_code
+    assert b'password is incorrect' in r.data
+

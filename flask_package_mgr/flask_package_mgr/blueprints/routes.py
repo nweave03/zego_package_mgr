@@ -6,13 +6,15 @@
 """
 from __future__ import unicode_literals, absolute_import
 
-from flask import Blueprint, request, session, g, abort, current_app, jsonify, json
-from .schemas import TokenSchema, PackagesGetSchema, PackagesPostSchema, PackagesTitlePostSchema, PackagesTitleGetSchema
+from flask import Blueprint, request, session, g, abort, current_app, jsonify, json, send_from_directory
+from .schemas import TokenSchema, PackagesGetSchema, PackagesPostSchema, PackagesTitlePostSchema, PackagesTitleGetSchema, PackagesTitleTagPostSchema, PackagesTitleTagGetSchema
 
 from .. import package_database
 from ..error_handlers import IntegrityError, UnhandledError, UnauthorizedError, InvalidUseError, NotFoundError
 from ..auth import authorize, unauthorize, authenticate, auth_add_user
-from ..filestore import store_file, get_all_packages, search_specific_packages, get_all_tags, search_specific_tags
+from ..filestore import store_file, get_all_packages, search_specific_packages, get_all_tags, search_specific_tags, get_filepath_for_package
+
+api_version = '/api/v1'
 
 # create blueprint
 pckg = Blueprint('pckg', __name__)
@@ -67,7 +69,7 @@ def parse_message(content, schema):
 
     return parsed_data
 
-@pckg.route('/admin/user_list', methods=['GET'])
+@pckg.route(api_version + '/admin/user_list', methods=['GET'])
 def user_list():
     """
     marked as 'admin' but really is just a passthrough for testing purposes
@@ -77,7 +79,7 @@ def user_list():
         user_list = []
     return jsonify(user_list)
 
-@pckg.route('/user/add', methods=['POST'])
+@pckg.route(api_version + '/user/add', methods=['POST'])
 def user_add():
     """
     adding a user to the system.  no auth or checking for now, so we can add users
@@ -91,7 +93,7 @@ def user_add():
                 )
     return jsonify(r)
 
-@pckg.route('/user/get_token', methods=['POST'])
+@pckg.route(api_version + '/user/get_token', methods=['POST'])
 def get_token():
     """
     get a token to use in further requests.  this token is not unique/enforced right now, but does
@@ -107,7 +109,7 @@ def get_token():
                     provided_password=parsed_data['password']
                     ))
 
-@pckg.route('/user/invalidate_token', methods=['POST'])
+@pckg.route(api_version + '/user/invalidate_token', methods=['POST'])
 def invalidate_token():
     """
     invalidates a token.  in order to be a bit safer requires the login credentials again so 
@@ -123,28 +125,14 @@ def invalidate_token():
                     provided_password=parsed_data['password']
                     ))
 
-@pckg.route('/packages', methods=['GET', 'POST'])
+@pckg.route(api_version + '/packages', methods=['GET', 'POST'])
 def packages():
     """ 
     base packages route.  this includes a POST that will allow the upload of a file and
     a GET that can be used to search packages
     """
-    print "in packages"
     if request.method == 'POST':
         user_id = authenticate_upload(request)
-        print "filename {fn}, data {d}, content_type {ct}, content_size {s}".format(
-                fn=request.files['json'].filename,
-                d=request.files['json'].read(),
-                ct=request.files['json'].content_type,
-                s=request.files['json'].content_length
-                )
-
-        print "filename {fn}, data {d}, content_type {ct}, content_size {s}".format(
-                fn=request.files['file'].filename,
-                d=request.files['file'].read(),
-                ct=request.files['file'].content_type,
-                s=request.files['file'].content_length
-                )
 
         # this is really weird, i've spent a lot of time looking into this, and
         # for some reason the python multi-part stuff isn't well defined.
@@ -188,7 +176,7 @@ def packages():
     else:
         raise InvalidUseError(message='method not supported')
 
-@pckg.route('/packages/<package_title>', methods=['GET','POST'])
+@pckg.route(api_version + '/packages/<package_title>', methods=['GET','POST'])
 def specific_package(package_title):
     """
     The specific packages route will allow upload on POST, in much the same way that 
@@ -247,6 +235,65 @@ def specific_package(package_title):
     else:
         raise InvalidUseError(message='method not supported')
 
+@pckg.route(api_version + '/packages/<package_title>/<tag>', methods=['GET','POST'])
+def specific_package_tag(package_title, tag):
+    """
+    The specific packages route will allow upload on POST, in much the same way that 
+    POST on the base packages route does, but it will take the package title and
+    package tag from the URL.  
+
+    On GET this method will download the file to the client.
+
+    because of this '/' are not allowed in the package titles and tags
+    """
+    if request.method == 'POST':
+        user_id = authenticate_upload(request)
+        # this is really weird, i've spent a lot of time looking into this, and
+        # for some reason the python multi-part stuff isn't well defined.
+        # werkzeug will not accept anything that cannot be opened in add_file, which 
+        # restricts potential string options.  I tried adding it into a temporary file
+        # but then werkzeug wouldn't accept application/json as content_type, it 
+        # overrode it with application/octet-stream
+        # I tried numerous string streams, but then werkzeug doesn't actually place the
+        # data of the string, but rather the type@memory_address identification.
+        # it appears that it will not actually read the string, but rather just the
+        # identification information.  Given these restrictions, and a lack of further time
+        # to spend looking into this weird python/flask multipart problem, I decided to just decode
+        # the json filename for now and move on.  This is an interview test, not something
+        # i intend to put into production.
+       
+        content = json.loads(request.files['json'].filename)
+
+        parsed_data = parse_message(content, PackagesTitleTagPostSchema())
+
+        if 'file' not in request.files:
+            raise InvalidUseError(message='file not in POST requst')
+        file = request.files['file']
+        return jsonify(
+                store_file(
+                    file=file,
+                    package_name=package_title,
+                    user=user_id,
+                    tag=tag
+                    )
+                )
+    elif request.method == 'GET':
+        authenticate_request(request)
+        content = request.get_json()
+
+        parsed_data = parse_message(content, PackagesTitleGetSchema())
+
+        filepath = get_filepath_for_package(
+                        package_name = package_title,
+                        tag = tag
+                        )
+        
+        return send_from_directory(directory=filepath[0], filename=filepath[1], as_attachment=True)
+    else:
+        raise InvalidUseError(message='method not supported')
+
+
+
 
 @pckg.errorhandler(UnauthorizedError)
 @pckg.errorhandler(UnhandledError)
@@ -254,6 +301,9 @@ def specific_package(package_title):
 @pckg.errorhandler(NotFoundError)
 @pckg.errorhandler(InvalidUseError)
 def handle_custom_error(error):
+    """
+    Handles all of the custom errors in the API and returns the relevant message and response code
+    """
     response = jsonify(error.to_dict())
     response.status_code = error.status_code
     return response

@@ -1,6 +1,6 @@
 import os
 from werkzeug.utils import secure_filename
-from package_database import lookup_package_id, store_package_rows, search_all_packages, search_packages, search_all_tags, search_tags
+from package_database import lookup_package_id, store_package_rows, search_all_packages, search_packages, search_all_tags, search_tags, lookup_filepath
 from error_handlers import InvalidUseError, IntegrityError
 from flask_package_mgr import app
 
@@ -48,6 +48,8 @@ def store_file(file, package_name, user, tag):
     if '/' in tag:
         raise InvalidUseError(message='tags cannot contain \'/\'')
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], package_name)
+    #make sure we are on the absolute path
+    filepath = os.path.abspath(filepath)
     if not os.path.exists(filepath):
         os.mkdir(filepath)
     filepath_filename = os.path.join(filepath, filename)
@@ -58,10 +60,11 @@ def store_file(file, package_name, user, tag):
         return store_package_rows(
                 package_name=package_name,
                 user=user,
-                filestore=filepath_filename,
+                filepath=filepath_filename,
                 tag=tag
                 )
     except Exception as err:
+        print "Exception in store_package_rows, deleting file {f}".format(f=filepath_filename)
         # file has to have been saved already from above, so need to catch
         # exceptions and remove the file
         if os.path.exists(filepath_filename):
@@ -82,3 +85,20 @@ def get_all_tags(package):
     This function is a passthrough to get all the tags for a package
     """
     return search_all_tags(package_name=package)
+
+def get_filepath_for_package(package_name, tag):
+    """
+    This function is used to lookup and validate that a file exists for the requested package and tag
+    """
+
+    filepath = lookup_filepath(
+                    package_name=package_name,
+                    tag=tag
+                    )
+
+    if os.path.exists(filepath) and os.path.isfile(filepath):
+        parts = os.path.split(filepath)
+        return parts
+    else:
+        print "Unable to locate filepath {fp}, Database and filesystem are out of syc".format(fp=filepath)
+        raise UnhandledError()

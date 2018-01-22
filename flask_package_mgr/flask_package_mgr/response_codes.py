@@ -1,3 +1,5 @@
+# basic response codes
+
 CREATED = 201
 INVALID_USE = 400
 UNAUTHORIZED = 401

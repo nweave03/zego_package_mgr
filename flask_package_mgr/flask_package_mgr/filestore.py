@@ -45,6 +45,8 @@ def store_file(file, package_name, user, tag):
     filename = secure_filename(file.filename)
     if '/' in filename:
         raise InvalidUseError(message='filenames cannot contain \'/\'')
+    if '/' in package_name:
+        raise InvalidUseError(message='package_name cannot contain \'/\'')
     if '/' in tag:
         raise InvalidUseError(message='tags cannot contain \'/\'')
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], package_name)

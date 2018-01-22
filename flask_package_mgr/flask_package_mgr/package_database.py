@@ -60,7 +60,7 @@ def add_user(username, password, key):
     except sqlite3.IntegrityError as err:
         raise IntegrityError(message='username is already in use')
     except Exception as err:
-        app.logger.error("Unable to add user {u}, password {p}, apikey {k} because {e}({et})".format(
+        current_app.logger.error("Unable to add user {u}, password {p}, apikey {k} because {e}({et})".format(
             u = username,
             p = password,
             k = key,
@@ -83,7 +83,7 @@ def lookup_user_id(username):
                     )
         return user_id['id'] if user_id != None else None
     except Exception as err:
-        app.logger.error("Unable to lookup_user_id username={u} : {e}".format(
+        current_app.logger.error("Unable to lookup_user_id username={u} : {e}".format(
                     u=username,
                     e=err
                     ))
@@ -108,10 +108,12 @@ def lookup_password(user):
                 args=[ user ]
                 )
         if None == password:
-            raise IntegrityError(message='username not found')
+            raise NotFoundError(message='username not found')
         return password[0]['password']
+    except NotFoundError as err:
+        raise err
     except Exception as err:
-        app.logger.error("Unhandled Error lookup up user {u} : {e}".format(
+        current_app.logger.error("Unhandled Error lookup up user {u} : {e}".format(
                     u=user,
                     e=err
                     ))
@@ -132,7 +134,7 @@ def search_all_packages():
             packages = []
         return packages
     except Exception as err:
-        app.logger.error("Unhandled Error in search_all_packages : {e}".format(
+        current_app.logger.error("Unhandled Error in search_all_packages : {e}".format(
                     e=err
                     ))
         raise UnhandledError()
@@ -154,7 +156,7 @@ def search_packages(search_term):
             packages = []
         return packages
     except Exception as err:
-        app.logger.error("Unhandled Error in search_packages {st} : {e}".format(
+        current_app.logger.error("Unhandled Error in search_packages {st} : {e}".format(
                     st=search_term,
                     e=err
                     ))
@@ -175,7 +177,7 @@ def lookup_package_id(package_name):
 
         return package_id['id'] if package_id is not None else None
     except Exception as err:
-        app.logger.error("Unhandled Error in lookup_package_id {pn} : {e}".format(
+        current_app.logger.error("Unhandled Error in lookup_package_id {pn} : {e}".format(
                     pn = package_name,
                     e=err
                     ))
@@ -196,7 +198,7 @@ def store_package_name(package_name, user):
     except sqlite3.IntegrityError as err:
         raise IntegrityError(message='package name already in use')
     except Exception as err:
-        app.logger.error("Unhandled Error in store_package_name package_name={pn} user={u} : {e}".format(
+        current_app.logger.error("Unhandled Error in store_package_name package_name={pn} user={u} : {e}".format(
                                 pn=package_name,
                                 u=user,
                                 e=err
@@ -216,7 +218,7 @@ def delete_package(package_id):
             )
         return True
     except Exception as err:
-        app.logger.error("could not delete package {pd} from table : {e}".format(
+        current_app.logger.error("could not delete package {pd} from table : {e}".format(
                                 pd = package_id,
                                 e = err
                                 ))
@@ -237,7 +239,7 @@ def lookup_filestore_id_by_path(filepath):
                 )
         return filestore_id['id'] if filestore_id is not None else None
     except Exception as err:
-        app.logger.error("Unhandled Error in lookup_filestore_id_by_path filestore={f} : {e}".format(
+        current_app.logger.error("Unhandled Error in lookup_filestore_id_by_path filestore={f} : {e}".format(
                         f=filepath,
                         e=err
                         ))
@@ -255,12 +257,12 @@ def store_filestore(filepath):
                     )
         return add_filestore_id
     except sqlite3.IntegrityError as err:
-        app.logger.error("Package location is not unique : {f}".format(
+        current_app.logger.error("Package location is not unique : {f}".format(
                 f=filepath
                 ))
         raise UnhandledError()
     except Exception as err:
-        app.logger.error("Unhandled Error in store_filestore filepath={f} : {e}".format(
+        current_app.logger.error("Unhandled Error in store_filestore filepath={f} : {e}".format(
                     f=filepath,
                     e=err
                     ))
@@ -279,7 +281,7 @@ def delete_filestore(filestore_id):
             )
         return True
     except Exception as err:
-        app.logger.error("could not delete filestore id {fi} from filestore : {e}".format(
+        current_app.logger.error("could not delete filestore id {fi} from filestore : {e}".format(
                                 fi = filestore_id,
                                 e = err
                                 ))
@@ -299,7 +301,7 @@ def lookup_tag_id(package_id, tag):
                     )
         return tag_id['id'] if tag_id is not None else None
     except Exception as err:
-        app.logger.error("Unhandled Error lookup_tag_id package_id={pi} tag={t} : {e} {et}".format(
+        current_app.logger.error("Unhandled Error lookup_tag_id package_id={pi} tag={t} : {e} {et}".format(
                         pi=package_id,
                         t=tag,
                         e=err,
@@ -319,7 +321,7 @@ def store_tag(package_id, filestore_id, tag):
                     )
         return add_tag_id
     except sqlite3.IntegrityError as err:
-        app.logger.error("Tag and package_id are not unique. package_id={pi} filestore_id={fi} tag={t}: {e}".format(
+        current_app.logger.error("Tag and package_id are not unique. package_id={pi} filestore_id={fi} tag={t}: {e}".format(
                             pi=package_id,
                             fi=filestore_id,
                             t=tag,
@@ -327,7 +329,7 @@ def store_tag(package_id, filestore_id, tag):
                             ))
         raise IntegrityError(message='Tag is not unique to package')
     except Exception as err:
-        app.logger.error("Unhandled Error in store_tag_id package_id={pi} filestore_id={fi} tag={t} : {e}".format(
+        current_app.logger.error("Unhandled Error in store_tag_id package_id={pi} filestore_id={fi} tag={t} : {e}".format(
                             pi=package_id,
                             fi=filestore_id,
                             t=tag,
@@ -373,7 +375,7 @@ def store_package_rows(package_name, user, filepath, tag):
                         filepath=filepath
                         )
         except Exception as err:
-            app.logger.error("Exception in store_filestore")
+            current_app.logger.error("Exception in store_filestore")
             
             cleanup_add(
                 package_id = package_id if (curr_package_id == None) else None,
@@ -407,7 +409,7 @@ def store_package_rows(package_name, user, filepath, tag):
             )
         raise err
     except Exception as err:
-        app.logger.error("Exception in store_tag")
+        current_app.logger.error("Exception in store_tag")
         cleanup_add(
             package_id = package_id if (curr_package_id == None) else None,
             filestore_id = filestore_id if (curr_filestore_id == None) else None
@@ -433,7 +435,7 @@ def search_all_tags_by_id(package_id):
             tags = []
         return tags
     except Exception as err:
-        app.logger.error("Unhandled Error in search_all_tags_by_id: package_id {pi} : {e}".format(
+        current_app.logger.error("Unhandled Error in search_all_tags_by_id: package_id {pi} : {e}".format(
                     pi=package_id,
                     e=err
                     ))
@@ -456,7 +458,7 @@ def search_tags_by_id_and_term(package_id, tag_search_term):
             tags = []
         return tags
     except Exception as err:
-        app.logger.error(
+        current_app.logger.error(
             "Unhandled Error in search_tags_by_id_and_term: package_id {pi}, tag_search_term {tst} : {e}".format(
                     pi=package_id,
                     tst=tag_search_term,
@@ -505,7 +507,7 @@ def lookup_filestore_id_from_tag(package_id, tag):
                 )
         return filestore_id['filestore_id'] if filestore_id is not None else None
     except Exception as err:
-        app.logger.error("Unhandled Error in lookup_filestore_id_from_tag: package_id {pi}, tag {t} : {e}".format(
+        current_app.logger.error("Unhandled Error in lookup_filestore_id_from_tag: package_id {pi}, tag {t} : {e}".format(
                     pi=package_id,
                     t=tag,
                     e=err
@@ -526,7 +528,7 @@ def lookup_filepath_from_id(filestore_id):
                 )
         return filepath['package_filepath'] if filepath is not None else None
     except Exception as err:
-        app.logger.error("Unhandled Error in lookup_filepath: filestore_id {fi} : {e}".format(
+        current_app.logger.error("Unhandled Error in lookup_filepath: filestore_id {fi} : {e}".format(
                 fi=filestore_id,
                 e=err
                 ))

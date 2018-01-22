@@ -43,7 +43,7 @@ if you wish to see the log outputs run without supressing text
 
 >pytest -s
 
-##API Definitions
+## API Definitions
 The API has a few routes:
 * `/api/v1/admin/user_list`
     * content_type - application/json

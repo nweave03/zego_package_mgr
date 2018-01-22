@@ -12,18 +12,23 @@ or possibly
 Then go into the directory flask_package_mgr and activate the virtualenv
 
 >cd flask_package_mgr
+
 >virtualenv venv
+
 >. venv/bin/activate
 
 Then you will need to install Flask, pytest, and the application
 
 >pip install flask
+
 >pip install pytest
+
 >pip install --editable .
 
 Now we want to create the initial blank database
 
 >export FLASK_APP=flask_package_mgr
+
 >flask initdb
 
 ## Basic running

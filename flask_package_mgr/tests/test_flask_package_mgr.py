@@ -360,6 +360,58 @@ def test_invalidate_token_fail_bad_password(client):
     assert response_codes.UNAUTHORIZED == r.status_code
     assert b'password is incorrect' in r.data
 
+def test_invalidate_token_fail_no_password(client):
+    token = add_base_user_and_get_token(client)
+    token_data = { 'token' : token }
+    invalidate_token_data = { 
+        'username' : 'nweaver'
+        }
+    r = client.post(
+            '/api/v1/user/invalidate_token',
+            data=json.dumps(invalidate_token_data),
+            headers=token_data,
+            content_type='application/json',
+            follow_redirects=True
+            )
+    
+    assert response_codes.INVALID_USE == r.status_code
+    assert b'password is required' in r.data
+
+def test_invalidate_token_fail_no_username(client):
+    token = add_base_user_and_get_token(client)
+    token_data = { 'token' : token }
+    invalidate_token_data = { 
+        'password' : 'password'
+        }
+    r = client.post(
+            '/api/v1/user/invalidate_token',
+            data=json.dumps(invalidate_token_data),
+            headers=token_data,
+            content_type='application/json',
+            follow_redirects=True
+            )
+    
+    assert response_codes.INVALID_USE == r.status_code
+    assert b'username is required' in r.data
+
+def test_invalidate_token_fail_bad_username(client):
+    token = add_base_user_and_get_token(client)
+    token_data = { 'token' : token }
+    invalidate_token_data = { 
+        'username' : 'invalidusername',
+        'password' : 'password'
+        }
+    r = client.post(
+            '/api/v1/user/invalidate_token',
+            data=json.dumps(invalidate_token_data),
+            headers=token_data,
+            content_type='application/json',
+            follow_redirects=True
+            )
+    
+    assert response_codes.NOT_FOUND == r.status_code
+    assert b'username not found' in r.data
+
 def test_invalidate_token_fail_bad_username_in_token(client):
     token = add_base_user_and_get_token(client)
     token_data = { 'token' : 'aValidToken-invalidusername' }
@@ -444,6 +496,7 @@ def test_file_post(client):
             data=json.dumps(get_data),
             content_type='application/json'
             )
+
     assert 200==r.status_code
     assert 'test' not in r.data
 
@@ -663,9 +716,9 @@ def test_post_fail_4(client):
             data=files
             )
     assert response_codes.INVALID_USE == r.status_code
-    assert "filenames cannot contain" in r.data
+    assert "package_name cannot contain" in r.data
 
-def test_post_fail_4(client):
+def test_post_fail_5(client):
     token = add_base_user_and_get_token(client)
     token_data = { 'token' : token }
 

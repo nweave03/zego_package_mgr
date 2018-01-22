@@ -1,5 +1,5 @@
 from flask import g, current_app
-from package_database import lookup_password, add_user 
+from package_database import lookup_password, add_user, lookup_user_id
 from error_handlers import UnauthorizedError
 
 def authorize(username, provided_password):
@@ -12,7 +12,7 @@ def authorize(username, provided_password):
     if (provided_password == stored_password):
         # for now hard coding a token, real implementations 
         # would require more, plus timeouts/etc
-        return { 'token' : 'aValidToken' }
+        return { 'token' : "aValidToken-{u}".format(u=username) }
     else:
         raise UnauthorizedError(message='password is incorrect')
 
@@ -31,9 +31,13 @@ def authenticate(token):
     validate that the user has provided a valid token.  Would also
     be where timeout checks would go/etc.
     """
-    if token != 'aValidToken':
+    if 'aValidToken' not in token:
         raise UnauthorizedError(message='Invalid Token')
-    return True
+    username = token.rsplit('-',1)[1]
+    
+    user_id = lookup_user_id(username=username)
+
+    return user_id
 
 def auth_add_user(username, password):
     """

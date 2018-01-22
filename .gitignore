@@ -4,6 +4,8 @@ flask_package_mgr/venv/
 flask_package_mgr/flask_package_mgr.egg-info/
 flask_package_mgr/.eggs/
 flask_package_mgr/flask_package_mgr/package_mgr.db
+flask_package_mgr/uploads/
+flask_package_mgr/test/uploads/
 *.pyc
 *.swp
 *.swo

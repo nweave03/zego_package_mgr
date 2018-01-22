@@ -15,12 +15,14 @@ create table packages (
     id          integer primary key autoincrement,
     title       varchar(255),
     user_id     integer,
-    FOREIGN KEY(user_id) REFERENCES users(id)
+    FOREIGN KEY(user_id) REFERENCES users(id),
+    CONSTRAINT unique_itle UNIQUE(title)
     );
 
 create table filestore (
     id          integer primary key autoincrement,
-    package     BLOB
+    package_filepath varchar(255),
+    CONSTRAINT unique_loc UNIQUE(package_filepath)
     );
 
 create table tags (

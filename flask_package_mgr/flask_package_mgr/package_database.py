@@ -74,6 +74,26 @@ def add_user(username, password, key):
             )
         raise UnhandledError()
 
+def lookup_user_id(username):
+    """
+    looks up a user id by their username
+    """
+
+    try:
+        search_query = "SELECT id FROM users WHERE username = ?"
+        user_id = query_db(
+                    query=search_query,
+                    args = [ username ],
+                    one=True
+                    )
+        return user_id['id'] if user_id != None else None
+    except Exception as err:
+        print "Unable to lookup_user_id username={u} : {e}".format(
+                    u=username,
+                    e=err
+                    )
+        raise UnhandledError()
+
 def list_users():
     """
     lists users of the database, for testing only
@@ -93,7 +113,7 @@ def lookup_password(user):
                 args=[ user ]
                 )
         if None == password:
-            raise InvalidUseError(message='username not found')
+            raise IntegrityError(message='username not found')
         return password[0]['password']
     except Exception as err:
         print "Unhandled Error lookup up user {u} : {e}".format(
@@ -105,16 +125,19 @@ def lookup_password(user):
 
 
 def search_all_packages():
+    """
+    returns a list of all packages currently being stored
+    """
     try:
-        all_packages_query = "SELECT title FROM packages"
+        all_packages_query = "SELECT title, id FROM packages"
         packages = query_db(
                 query=all_packages_query
                 )
-        if None == Packages:
+        if None == packages:
             packages = []
         return packages
     except Exception as err:
-        print "Unhandled Error in search_packages : {e}".format(
+        print "Unhandled Error in search_all_packages : {e}".format(
                     e=err
                     )
         raise UnhandledError()
@@ -122,14 +145,17 @@ def search_all_packages():
 
 
 def search_packages(search_term):
+    """
+    Allows users to search for specific text within a package name
+    """
     try:
-        search_query = "SELECT title FROM packages WHERE title LIKE ?"
-        search_term = "%{st}%".fomat(st=search_term)
+        search_query = "SELECT title, id FROM packages WHERE title LIKE ?"
+        search_term = "%{st}%".format(st=search_term)
         packages = query_db(
                 query=search_query,
                 args=[ search_term ]
                 )
-        if None == Packages:
+        if None == packages:
             packages = []
         return packages
     except Exception as err:
@@ -139,3 +165,256 @@ def search_packages(search_term):
                     )
         raise UnhandledError()
 
+def lookup_package_id(package_name):
+    """
+    looks up the package id for the given package name, if exists
+    """
+    try:
+        search_query = "SELECT id FROM packages WHERE title = ?"
+    
+        package_id = query_db(
+                query=search_query,
+                args = [ package_name ],
+                one=True
+                )
+
+        return package_id['id'] if package_id is not None else None
+    except Exception as err:
+        print "Unhandled Error in lookup_package_id {pn} : {e}".format(
+                    pn = package_name,
+                    e=err
+                    )
+
+        raise UnhandledError()
+ 
+def store_package_name(package_name, user):
+    """
+    stores a new package in the database, should only be used after checking lookup_package_id
+    """
+    try:
+        add_package_id = insert_db(
+                        table='packages',
+                        fields=[ 'title', 'user_id' ],
+                        values=[ package_name, user ]
+                        )
+        return add_package_id
+    except sqlite3.IntegrityError as err:
+        raise IntegrityError(message='package name already in use')
+    except Exception as err:
+        print "Unhandled Error in store_package_name package_name={pn} user={u} : {e}".format(
+                                pn=package_name,
+                                u=user,
+                                e=err
+                                )
+        raise UnhandledError()
+
+def delete_package(package_id):
+    """
+    removes a package from the database package table, used for cleanup from errors
+    """
+    try:
+        delete_query = "DELETE FROM packages WHERE id = ?"
+
+        query_db(
+            query=delete_query,
+            args = [ package_id ]
+            )
+        return True
+    except Exception as err:
+        print "could not delete package {pd} from table : {e}".format(
+                                pd = package_id,
+                                e = err
+                                )
+        raise UnhandledError()
+
+
+def lookup_filestore_id(filestore):
+    """
+    looks up a current filestore_id from a package location
+    """
+    try:
+        search_query = "SELECT id FROM filestore WHERE package_filepath = ?"
+
+        filestore_id = query_db(
+                query=search_query,
+                args = [ filestore ],
+                one=True
+                )
+        return filestore_id['id'] if filestore_id is not None else None
+    except Exception as err:
+        print "Unhandled Error in lookup_filestore_id filestore={f} : {e}".format(
+                        f=filestore,
+                        e=err
+                        )
+        raise UnhandledError()
+
+def store_filestore(filestore):
+    """
+    stores a new filestore in the database, should only be used after checking lookup_filestore_id
+    """
+    try:
+        add_filestore_id = insert_db(
+                    table='filestore',
+                    fields = [ 'package_filepath' ],
+                    values = [ filestore ]
+                    )
+        return add_filestore_id
+    except sqlite3.IntegrityError as err:
+        print "Package location is not unique : {f}".format(
+                f=filestore
+                )
+        raise UnhandledError()
+    except Exception as err:
+        print "Unhandled Error in store_filename filestore={f} : {e}".format(
+                    f=filestore,
+                    e=err
+                    )
+        raise UnhandledError()
+
+def delete_filestore(filestore_id):
+    """
+    deletes a filestore from the database, used for cleanup from errors
+    """
+    try:
+        delete_query = "DELETE FROM filestore WHERE id = ?"
+
+        query_db(
+            query = delete_query,
+            args = [ filestore_id ]
+            )
+        return True
+    except Exception as err:
+        print "could not delete filestore id {fi} from filestore : {e}".format(
+                                fi = filestore_id,
+                                e = err
+                                )
+        raise UnhandledError()
+
+def lookup_tag_id(package_id, tag):
+    """
+    looks up the tag_id of a package and file location
+    """
+    try:
+        search_query = "SELECT id FROM tags WHERE package_id = ? AND tag = ?"
+
+        tag_id = query_db(
+                    query=search_query,
+                    args = [ package_id, tag ],
+                    one=True
+                    )
+        return tag_id['id'] if tag_id is not None else None
+    except Exception as err:
+        print "Unhandled Error lookup_tag_id package_id={pi} tag={t} : {e} {et}".format(
+                        pi=package_id,
+                        t=tag,
+                        e=err,
+                        et=type(err)
+                        )
+        raise UnhandledError()
+
+def store_tag(package_id, filestore_id, tag):
+    try:
+        add_tag_id = insert_db(
+                    table='tags',
+                    fields = [ 'tag', 'package_id', 'filestore_id' ],
+                    values = [ tag, package_id, filestore_id ]
+                    )
+        return add_tag_id
+    except sqlite3.IntegrityError as err:
+        print "Tag and package_id are not unique. package_id={pi} filestore_id={fi} tag={t}: {e}".format(
+                            pi=package_id,
+                            fi=filestore_id,
+                            t=tag,
+                            e=err
+                            )
+        raise IntegrityError(message='Tag is not unique to package')
+    except Exception as err:
+        print "Unhandled Error in store_tag_id package_id={pi} filestore_id={fi} tag={t} : {e}".format(
+                            pi=package_id,
+                            fi=filestore_id,
+                            t=tag,
+                            e=err
+                            )
+        raise UnhandledError()
+
+def cleanup_add(package_id, filestore_id):
+    """
+    cleanup for insertion attempts that fail at a later stage
+    """
+    if None != package_id:
+        delete_package(package_id=package_id)
+    if None != filestore_id:
+        delete_filestore(filestore_id=filestore_id)
+    return None
+
+def store_package_rows(package_name, user, filestore, tag):
+    """ 
+    The complete storing of an entire package
+    """
+
+    # this is used to detect if the package already existed before this
+    # attempt.  aids in cleanup
+    curr_package_id = lookup_package_id(
+                        package_name=package_name
+                        )
+   
+    package_id = curr_package_id
+    if None == package_id:
+        package_id = store_package_name(
+                        package_name=package_name,
+                        user=user
+                        )
+
+    curr_filestore_id = lookup_filestore_id(
+                        filestore=filestore
+                        )
+    print "found filestore id {f}".format(f= curr_filestore_id)
+    filestore_id = curr_filestore_id
+    if None == filestore_id:
+        try:
+            filestore_id = store_filestore(
+                        filestore=filestore
+                        )
+        except Exception as err:
+            cleanup_add(
+                package_id = package_id if (curr_package_id == None) else None,
+                filestore_id = None
+                )
+            raise UnhandledError()
+    
+    tag_id = lookup_tag_id(
+                package_id=package_id,
+                tag=tag
+                )
+    if None != tag_id:
+        # this means the tag already exists for adding this package
+        cleanup_add(
+            package_id = package_id if (curr_package_id == None) else None,
+            filestore_id = filestore_id if (curr_filestore_id == None) else None
+            )
+        raise IntegrityError(message='tag is already in use for package')
+
+    # store the tag in the database
+    try:
+        tag_id = store_tag(
+                package_id=package_id,
+                filestore_id=filestore_id,
+                tag=tag
+                )
+    except IntegrityError as err:
+        cleanup_add(
+            package_id = package_id if (curr_package_id == None) else None,
+            filestore_id = filestore_id if (curr_filestore_id == None) else None
+            )
+        raise err
+    except Exception as err:
+        cleanup_add(
+            package_id = package_id if (curr_package_id == None) else None,
+            filestore_id = filestore_id if (curr_filestore_id == None) else None
+            )
+        raise UnhandledError()
+    return { 
+            'package_id' : package_id,
+            'tag_id' : tag_id
+            }
+                

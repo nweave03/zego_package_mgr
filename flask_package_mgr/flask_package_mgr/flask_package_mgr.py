@@ -54,6 +54,7 @@ def register_teardowns(app):
         if hasattr(g, 'sqlite_db'):
             g.sqlite_db.close()
 
+
 app = Flask('flask_package_mgr')
 
 app.config.update(
@@ -62,7 +63,8 @@ app.config.update(
         DEBUG=True,
         SECRET_KEY='TempKey',
         USERNAME='admin',
-        PASSWORD='default'
+        PASSWORD='default',
+        UPLOAD_FOLDER='uploads/'
         )
     )
 

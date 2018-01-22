@@ -7,12 +7,12 @@
 from __future__ import unicode_literals, absolute_import
 
 from flask import Blueprint, request, session, g, abort, current_app, jsonify, json
-from .schemas import TokenSchema, PackagesGetSchema, PackagesPostSchema
+from .schemas import TokenSchema, PackagesGetSchema, PackagesPostSchema, PackagesTitlePostSchema, PackagesTitleGetSchema
 
 from .. import package_database
-from ..error_handlers import IntegrityError, UnhandledError, UnauthorizedError, InvalidUseError
+from ..error_handlers import IntegrityError, UnhandledError, UnauthorizedError, InvalidUseError, NotFoundError
 from ..auth import authorize, unauthorize, authenticate, auth_add_user
-from ..filestore import store_file, get_all_packages, search_specific_packages
+from ..filestore import store_file, get_all_packages, search_specific_packages, get_all_tags, search_specific_tags
 
 # create blueprint
 pckg = Blueprint('pckg', __name__)
@@ -189,13 +189,61 @@ def packages():
         raise InvalidUseError(message='method not supported')
 
 @pckg.route('/packages/<package_title>', methods=['GET','POST'])
-def upload_package():
-    authenticate_request(request)
-    content = request.get_json()
+def specific_package(package_title):
+    """
+    The specific packages route will allow upload on POST, in much the same way that 
+    POST on the base packages route does, but it will take the package title from the URL.  
+    On GET this method will allow searching of tags to get specific tag ids
+
+    because of this '/' are not allowed in the package titles and tags
+    """
     if request.method == 'POST':
-        pass
+        user_id = authenticate_upload(request)
+        # this is really weird, i've spent a lot of time looking into this, and
+        # for some reason the python multi-part stuff isn't well defined.
+        # werkzeug will not accept anything that cannot be opened in add_file, which 
+        # restricts potential string options.  I tried adding it into a temporary file
+        # but then werkzeug wouldn't accept application/json as content_type, it 
+        # overrode it with application/octet-stream
+        # I tried numerous string streams, but then werkzeug doesn't actually place the
+        # data of the string, but rather the type@memory_address identification.
+        # it appears that it will not actually read the string, but rather just the
+        # identification information.  Given these restrictions, and a lack of further time
+        # to spend looking into this weird python/flask multipart problem, I decided to just decode
+        # the json filename for now and move on.  This is an interview test, not something
+        # i intend to put into production.
+       
+        content = json.loads(request.files['json'].filename)
+
+        parsed_data = parse_message(content, PackagesTitlePostSchema())
+
+        if 'file' not in request.files:
+            raise InvalidUseError(message='file not in POST requst')
+        file = request.files['file']
+        return jsonify(
+                store_file(
+                    file=file,
+                    package_name=package_title,
+                    user=user_id,
+                    tag=parsed_data['tag']
+                    )
+                )
     elif request.method == 'GET':
-        pass
+        authenticate_request(request)
+        content = request.get_json()
+
+        parsed_data = parse_message(content, PackagesTitleGetSchema())
+
+        if 'tag_search' in parsed_data:
+            tags = search_specific_tags(
+                    package = package_title,
+                    tag_search = parsed_data['tag_search']
+                    )
+        else:
+            tags = get_all_tags(
+                    package = package_title
+                    )
+        return jsonify(tags)
     else:
         raise InvalidUseError(message='method not supported')
 
@@ -203,6 +251,7 @@ def upload_package():
 @pckg.errorhandler(UnauthorizedError)
 @pckg.errorhandler(UnhandledError)
 @pckg.errorhandler(IntegrityError)
+@pckg.errorhandler(NotFoundError)
 @pckg.errorhandler(InvalidUseError)
 def handle_custom_error(error):
     response = jsonify(error.to_dict())

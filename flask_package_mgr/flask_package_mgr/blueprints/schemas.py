@@ -24,7 +24,7 @@ class PackagesPostSchema(Schema):
                 )
 
 class PackagesTitleGetSchema(Schema):
-    tag = fields.Str()
+    tag_search = fields.Str()
 
 class PackagesTitlePostSchema(Schema):
     tag = fields.Str(

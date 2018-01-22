@@ -3,7 +3,7 @@ from flask import g, current_app
 
 from flask_package_mgr import get_db
 
-from error_handlers import IntegrityError, UnhandledError
+from error_handlers import IntegrityError, UnhandledError, NotFoundError
 
 def query_db(query, args=(), one=False):
     """
@@ -417,4 +417,78 @@ def store_package_rows(package_name, user, filestore, tag):
             'package_id' : package_id,
             'tag_id' : tag_id
             }
-                
+
+
+def search_all_tags_by_id(package_id):
+    """
+    returns a list of all tags for a specific package
+    """
+    try:
+        all_tags_query = "SELECT tag, id FROM tags WHERE package_id = ?"
+        tags = query_db(
+                query=all_tags_query,
+                args = [ package_id ]
+                )
+        if None == tags:
+            tags = []
+        return tags
+    except Exception as err:
+        print "Unhandled Error in search_all_tags_by_id: package_id {pi} : {e}".format(
+                    pi=package_id,
+                    e=err
+                    )
+        raise UnhandledError()
+
+
+
+def search_tags_by_id_and_term(package_id, tag_search_term):
+    """
+    Allows users to search for specific text within a packages' tag
+    """
+    try:
+        search_query = "SELECT tag, id FROM tags WHERE package_id = ? AND tag LIKE ?"
+        search_term = "%{tst}%".format(tst=tag_search_term)
+        tags = query_db(
+                query=search_query,
+                args=[ package_id, search_term ]
+                )
+        if None == tags:
+            tags = []
+        return tags
+    except Exception as err:
+        print "Unhandled Error in search_tags_by_id_and_term: package_id {pi}, tag_search_term {tst} : {e}".format(
+                    pi=package_id,
+                    tst=tag_search_term,
+                    e=err
+                    )
+        raise UnhandledError()
+
+def search_all_tags(package_name):
+    """
+    looks up a package and return all of its tags that are available
+    """
+    package_id = lookup_package_id(
+                        package_name=package_name
+                        )
+    if package_id == None:
+        raise NotFoundError(message='could not locate package')
+
+    return search_all_tags_by_id(package_id=package_id)
+
+def search_tags(package_name, tag_search):
+    """
+    looks up a package and searches its tag for specific parameters
+    """
+    package_id = lookup_package_id(
+                        package_name=package_name
+                        )
+
+    if package_id == None:
+        raise NotFoundError(message='could not locate package')
+
+    return search_tags_by_id_and_term(
+                package_id = package_id,
+                tag_search_term=tag_search
+                )
+
+

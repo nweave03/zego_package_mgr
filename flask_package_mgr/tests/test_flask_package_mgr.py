@@ -362,7 +362,6 @@ def test_file_post(client):
         'file' : (open(filename, 'rb'), filename),
         'json' : (open(tmp, 'rb'), json_dumps, 'application/json')
         }
-    print "files is {f}".format(f=files)
 
     r = client.post(
             '/packages',
@@ -430,14 +429,12 @@ def add_package(client, token, package_name, tag, new_filename='test.txt'):
         'file' : (open(filename, 'rb'), new_filename),
         'json' : (open(tmp, 'rb'), json_dumps, 'application/json')
         }
-    print "files is {f}".format(f=files)
 
     r = client.post(
             '/packages',
             headers=token_data,
             data=files
             )
-    print "{r} : {d}".format(r=r.status_code, d=r.data)
     return r;
 
 def search_package(client, token, package_search):
@@ -454,7 +451,6 @@ def search_package(client, token, package_search):
             data=json.dumps(get_data),
             content_type='application/json'
             )
-    print "{r} : {d}".format(r=r.status_code, d=r.data)
    
 
 def test_multi_post(client):
@@ -508,4 +504,447 @@ def test_multi_post_fail(client):
     assert 'package_id' in resp
     assert resp['package_id'] == 1
 
+def test_post_fail(client):
+    token = add_base_user_and_get_token(client)
+    token_data = { 'token' : token }
 
+    package_post_data = {
+            "tag" : "1.0" 
+            }
+
+    filename = 'test.txt'
+    json_dumps = json.dumps(package_post_data) 
+
+    json_dumps = re.sub(r'"',
+                       r'\\"',
+                       json_dumps
+                       )    
+
+    fd,tmp=tempfile.mkstemp()
+    files = {
+        'file' : (open(filename, 'rb'), 'test.txt'),
+        'json' : (open(tmp, 'rb'), json_dumps, 'application/json')
+        }
+
+    r = client.post(
+            '/packages',
+            headers=token_data,
+            data=files
+            )
+    assert response_codes.INVALID_USE == r.status_code
+    assert "package_name is required" in r.data
+
+def test_post_fail_2(client):
+    token = add_base_user_and_get_token(client)
+    token_data = { 'token' : token }
+
+    package_post_data = {
+            "package_name" : "test" 
+            }
+
+    filename = 'test.txt'
+    json_dumps = json.dumps(package_post_data) 
+
+    json_dumps = re.sub(r'"',
+                       r'\\"',
+                       json_dumps
+                       )    
+
+    fd,tmp=tempfile.mkstemp()
+    files = {
+        'file' : (open(filename, 'rb'), 'test.txt'),
+        'json' : (open(tmp, 'rb'), json_dumps, 'application/json')
+        }
+
+    r = client.post(
+            '/packages',
+            headers=token_data,
+            data=files
+            )
+    assert response_codes.INVALID_USE == r.status_code
+    assert "tag is required" in r.data
+
+def test_post_fail_3(client):
+    token = add_base_user_and_get_token(client)
+    token_data = { 'token' : token }
+
+    package_post_data = {
+            "package_name" : "test",
+            "tag" : "1.0"
+            }
+
+    filename = 'test.txt'
+    json_dumps = json.dumps(package_post_data) 
+
+    json_dumps = re.sub(r'"',
+                       r'\\"',
+                       json_dumps
+                       )    
+
+    fd,tmp=tempfile.mkstemp()
+    files = {
+        'file' : (open(filename, 'rb'), 'test.xfd'),
+        'json' : (open(tmp, 'rb'), json_dumps, 'application/json')
+        }
+
+    r = client.post(
+            '/packages',
+            headers=token_data,
+            data=files
+            )
+    assert response_codes.INVALID_USE == r.status_code
+    assert "file is not of type" in r.data
+
+def test_post_fail_4(client):
+    token = add_base_user_and_get_token(client)
+    token_data = { 'token' : token }
+
+    package_post_data = {
+            "package_name" : "tes/t",
+            "tag" : "1.0"
+            }
+
+    filename = 'test.txt'
+    json_dumps = json.dumps(package_post_data) 
+
+    json_dumps = re.sub(r'"',
+                       r'\\"',
+                       json_dumps
+                       )    
+
+    fd,tmp=tempfile.mkstemp()
+    files = {
+        'file' : (open(filename, 'rb'), 'test.txt'),
+        'json' : (open(tmp, 'rb'), json_dumps, 'application/json')
+        }
+
+    r = client.post(
+            '/packages',
+            headers=token_data,
+            data=files
+            )
+    assert response_codes.INVALID_USE == r.status_code
+    assert "filenames cannot contain" in r.data
+
+def test_post_fail_4(client):
+    token = add_base_user_and_get_token(client)
+    token_data = { 'token' : token }
+
+    package_post_data = {
+            "package_name" : "test",
+            "tag" : "1.0/2"
+            }
+
+    filename = 'test.txt'
+    json_dumps = json.dumps(package_post_data) 
+
+    json_dumps = re.sub(r'"',
+                       r'\\"',
+                       json_dumps
+                       )    
+
+    fd,tmp=tempfile.mkstemp()
+    files = {
+        'file' : (open(filename, 'rb'), 'test.txt'),
+        'json' : (open(tmp, 'rb'), json_dumps, 'application/json')
+        }
+
+    r = client.post(
+            '/packages',
+            headers=token_data,
+            data=files
+            )
+    assert response_codes.INVALID_USE == r.status_code
+    assert "tags cannot contain" in r.data
+
+
+
+def test_file_package_post(client):
+    token = add_base_user_and_get_token(client)
+    token_data = { 'token' : token }
+
+    package_post_data = {
+            "tag" : "1.0"
+            }
+
+    filename = 'test.txt'
+    json_dumps = json.dumps(package_post_data) 
+
+    json_dumps = re.sub(r'"',
+                       r'\\"',
+                       json_dumps
+                       )    
+
+    fd,tmp=tempfile.mkstemp()
+
+    files = {
+        'file' : (open(filename, 'rb'), filename),
+        'json' : (open(tmp, 'rb'), json_dumps, 'application/json')
+        }
+
+    r = client.post(
+            '/packages/test',
+            headers=token_data,
+            data=files
+            )
+
+    assert 200==r.status_code
+    assert 'package_id' in r.data
+    assert 'tag_id' in r.data
+
+def test_file_package_post(client):
+    token = add_base_user_and_get_token(client)
+    
+    r = add_package(client, token, 'test', '1.0', 'test.txt')
+    assert r.status_code == 200
+    resp = json.loads(r.data)
+    assert 'package_id' in resp
+    assert resp['package_id'] == 1
+
+    token_data = {
+            "token" : token
+            }
+
+    package_get_data = {
+            "search_tag" : "1.0"
+            }
+
+    r = client.get(
+            '/packages/test',
+            headers=token_data,
+            data=json.dumps(package_get_data),
+            content_type='application/json'
+            )
+    assert 200 == r.status_code
+    assert '"tag": "1.0"' in r.data
+
+def get_package_tag_info(client, token, package, search_term=None):
+    token_data = { 'token' : token }
+ 
+    get_data = {}
+    if search_term is not None:
+        get_data = {'tag_search' : search_term}
+
+
+    r = client.get(
+            "/packages/{p}".format(p=package),
+            headers=token_data,
+            data=json.dumps(get_data),
+            content_type='application/json'
+            )
+    return r
+
+
+def test_file_package_get(client):
+    token = add_base_user_and_get_token(client)
+    
+    r = add_package(client, token, 'test', '1.0', 'test.txt')
+    assert r.status_code == 200
+    resp = json.loads(r.data)
+    assert 'package_id' in resp
+    assert resp['package_id'] == 1
+
+    r = add_package(client, token, 'test', '1.1', 'test2.txt')
+    assert r.status_code == 200
+    resp = json.loads(r.data)
+    assert 'package_id' in resp
+    assert resp['package_id'] == 1
+
+    r = add_package(client, token, 'test', '1.2', 'test3.txt')
+    assert r.status_code == 200
+    resp = json.loads(r.data)
+    assert 'package_id' in resp
+    assert resp['package_id'] == 1
+
+    r = add_package(client, token, 'test', '2.0', 'test4.txt')
+    assert r.status_code == 200
+    resp = json.loads(r.data)
+    assert 'package_id' in resp
+    assert resp['package_id'] == 1
+
+    r = add_package(client, token, 'test', '2.1', 'test5.txt')
+    assert r.status_code == 200
+    resp = json.loads(r.data)
+    assert 'package_id' in resp
+    assert resp['package_id'] == 1
+
+    r = add_package(client, token, 'test', '3.0', 'test6.txt')
+    assert r.status_code == 200
+    resp = json.loads(r.data)
+    assert 'package_id' in resp
+    assert resp['package_id'] == 1
+
+    r = add_package(client, token, 'foo', '1.0', 'test.txt')
+    assert r.status_code == 200
+    resp = json.loads(r.data)
+    assert 'package_id' in resp
+    assert resp['package_id'] == 2
+
+    r = add_package(client, token, 'bar', '2.0', 'test.txt')
+    assert r.status_code == 200
+    resp = json.loads(r.data)
+    assert 'package_id' in resp
+    assert resp['package_id'] == 3
+
+
+    r = get_package_tag_info(client, token, 'test')
+
+    assert 200 == r.status_code
+    assert '"tag": "1.0"' in r.data
+    assert '"tag": "1.1"' in r.data
+    assert '"tag": "1.2"' in r.data
+    assert '"tag": "2.0"' in r.data
+    assert '"tag": "2.1"' in r.data
+    assert '"tag": "3.0"' in r.data
+    resp = json.loads(r.data)
+    assert len(resp) == 6
+
+
+    r = get_package_tag_info(client, token, 'foo')
+
+    assert 200 == r.status_code
+    resp = json.loads(r.data)
+    assert len(resp) == 1
+    assert '"tag": "1.0"' in r.data
+
+    r = get_package_tag_info(client, token, 'bar')
+
+    assert 200 == r.status_code
+    resp = json.loads(r.data)
+    assert len(resp) == 1
+    assert '"tag": "2.0"' in r.data
+
+    r = get_package_tag_info(client, token, 'test', "1.")
+
+    assert 200 == r.status_code
+    resp = json.loads(r.data)
+    assert len(resp) == 3
+    assert '"tag": "1.0"' in r.data
+    assert '"tag": "1.1"' in r.data
+    assert '"tag": "1.2"' in r.data
+
+    r = get_package_tag_info(client, token, 'test', "2.")
+
+    assert 200 == r.status_code
+    resp = json.loads(r.data)
+    assert len(resp) == 2
+    assert '"tag": "2.0"' in r.data
+    assert '"tag": "2.1"' in r.data
+
+    r = get_package_tag_info(client, token, 'test', "3.")
+
+    assert 200 == r.status_code
+    resp = json.loads(r.data)
+    assert len(resp) == 1
+    assert '"tag": "3.0"' in r.data
+
+    r = get_package_tag_info(client, token, 'test', ".0")
+
+    assert 200 == r.status_code
+    resp = json.loads(r.data)
+    assert len(resp) == 3
+    assert '"tag": "3.0"' in r.data
+    assert '"tag": "2.0"' in r.data
+    assert '"tag": "1.0"' in r.data
+
+    r = get_package_tag_info(client, token, 'test', ".1")
+
+    assert 200 == r.status_code
+    resp = json.loads(r.data)
+    assert len(resp) == 2
+    assert '"tag": "2.1"' in r.data
+    assert '"tag": "1.1"' in r.data
+
+    r = get_package_tag_info(client, token, 'test', ".2")
+
+    assert 200 == r.status_code
+    resp = json.loads(r.data)
+    assert len(resp) == 1
+    assert '"tag": "1.2"' in r.data
+
+    r = get_package_tag_info(client, token, 'foo', ".5")
+
+    assert 200 == r.status_code
+    resp = json.loads(r.data)
+    assert len(resp) == 0
+
+    r = get_package_tag_info(client, token, 'foo', ".0")
+
+    assert 200 == r.status_code
+    resp = json.loads(r.data)
+    assert len(resp) == 1
+    assert '"tag": "1.0"' in r.data
+
+    r = get_package_tag_info(client, token, 'bar', ".0")
+
+    assert 200 == r.status_code
+    resp = json.loads(r.data)
+    assert len(resp) == 1
+    assert '"tag": "2.0"' in r.data
+
+    r = get_package_tag_info(client, token, 'bar', "5.0")
+
+    assert 200 == r.status_code
+    resp = json.loads(r.data)
+    assert len(resp) == 0
+
+def test_file_package_get_fail(client):
+    token = add_base_user_and_get_token(client)
+    
+    r = add_package(client, token, 'test', '1.0', 'test.txt')
+    assert r.status_code == 200
+    resp = json.loads(r.data)
+    assert 'package_id' in resp
+    assert resp['package_id'] == 1
+
+    r = add_package(client, token, 'test', '1.1', 'test2.txt')
+    assert r.status_code == 200
+    resp = json.loads(r.data)
+    assert 'package_id' in resp
+    assert resp['package_id'] == 1
+
+    r = add_package(client, token, 'test', '1.2', 'test3.txt')
+    assert r.status_code == 200
+    resp = json.loads(r.data)
+    assert 'package_id' in resp
+    assert resp['package_id'] == 1
+
+    r = add_package(client, token, 'test', '2.0', 'test4.txt')
+    assert r.status_code == 200
+    resp = json.loads(r.data)
+    assert 'package_id' in resp
+    assert resp['package_id'] == 1
+
+    r = add_package(client, token, 'test', '2.1', 'test5.txt')
+    assert r.status_code == 200
+    resp = json.loads(r.data)
+    assert 'package_id' in resp
+    assert resp['package_id'] == 1
+
+    r = add_package(client, token, 'test', '3.0', 'test6.txt')
+    assert r.status_code == 200
+    resp = json.loads(r.data)
+    assert 'package_id' in resp
+    assert resp['package_id'] == 1
+
+    r = add_package(client, token, 'foo', '1.0', 'test.txt')
+    assert r.status_code == 200
+    resp = json.loads(r.data)
+    assert 'package_id' in resp
+    assert resp['package_id'] == 2
+
+    r = add_package(client, token, 'bar', '2.0', 'test.txt')
+    assert r.status_code == 200
+    resp = json.loads(r.data)
+    assert 'package_id' in resp
+    assert resp['package_id'] == 3
+
+    r = get_package_tag_info(client, token, 'unknown', "5.0")
+
+    assert response_codes.NOT_FOUND == r.status_code
+    assert 'could not locate package' in r.data
+
+    r = get_package_tag_info(client, token, 'unknown')
+
+    assert response_codes.NOT_FOUND == r.status_code
+    assert 'could not locate package' in r.data

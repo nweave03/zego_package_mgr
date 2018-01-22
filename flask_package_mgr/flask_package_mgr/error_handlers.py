@@ -17,7 +17,6 @@ class BaseResponseError(Exception):
         return rv
 
 class IntegrityError(BaseResponseError):
-
     def __init__(self, message, status_code=response_codes.CONFLICT, payload=None):
         BaseResponseError.__init__(self, message, status_code, payload)
 
@@ -32,3 +31,8 @@ class InvalidUseError(BaseResponseError):
 class UnauthorizedError(BaseResponseError):
     def __init__(self, message, status_code=response_codes.UNAUTHORIZED, payload=None):
         BaseResponseError.__init__(self, message, status_code, payload)
+
+class NotFoundError(BaseResponseError):
+    def __init__(self, message, status_code=response_codes.NOT_FOUND, payload=None):
+        BaseResponseError.__init__(self, message, status_code, payload)
+
